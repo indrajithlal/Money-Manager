@@ -8,7 +8,12 @@ import 'package:flutter/material.dart';
 
 class SplitExpensePageSettlePage extends StatefulWidget {
   final String gid;
-  const SplitExpensePageSettlePage({required this.gid, super.key});
+  final String currency;
+  const SplitExpensePageSettlePage({
+    required this.gid,
+    this.currency = '₹',
+    super.key,
+  });
 
   @override
   State<SplitExpensePageSettlePage> createState() =>
@@ -91,7 +96,7 @@ class _SplitExpensePageSettlePageState
                                     ),
                                   ),
                                   subtitle: Text(
-                                    "Charged ${data[index].moneyNeededToPay}, Paid ${data[index].moneyPaid}",
+                                    "Charged ${widget.currency} ${data[index].moneyNeededToPay}, Paid ${widget.currency} ${data[index].moneyPaid}",
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w500,
@@ -99,7 +104,7 @@ class _SplitExpensePageSettlePageState
                                     ),
                                   ),
                                   trailing: Text(
-                                    "${data[index].moneyPaid - data[index].moneyNeededToPay}",
+                                    "${data[index].moneyPaid - data[index].moneyNeededToPay < 0 ? "-${widget.currency} ${(data[index].moneyNeededToPay - data[index].moneyPaid)}" : (data[index].moneyPaid - data[index].moneyNeededToPay > 0 ? "+${widget.currency} ${(data[index].moneyPaid - data[index].moneyNeededToPay)}" : "${widget.currency} 0")}",
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w500,
@@ -162,7 +167,7 @@ class _SplitExpensePageSettlePageState
                                     ),
                                   ),
                                   trailing: Text(
-                                    summaryInfo[index]["amount"]!,
+                                    "${widget.currency} ${summaryInfo[index]["amount"]!}",
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w500,

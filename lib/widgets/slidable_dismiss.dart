@@ -3,60 +3,65 @@ import 'package:money_manager/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
-class SlidableDismiss extends StatefulWidget {
+class SlidableDismiss extends StatelessWidget {
   final Widget childWidget;
   final Function onDelete;
-  final String index;
+  final String? index;
   final Expense expense;
   const SlidableDismiss({
     required this.childWidget,
     required this.onDelete,
-    required this.index,
+    this.index,
     required this.expense,
     super.key,
   });
 
   @override
-  State<SlidableDismiss> createState() => _SlidableDismissState();
-}
-
-class _SlidableDismissState extends State<SlidableDismiss> {
-  bool isDismissed = false;
-  @override
   Widget build(BuildContext context) {
-    return isDismissed
-        ? const SizedBox()
-        : Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: Material(
-              color: white1,
-              borderRadius: BorderRadius.circular(5),
-              clipBehavior: Clip.antiAlias,
-              child: Slidable(
-                key: Key(widget.index),
-                startActionPane: ActionPane(
-                  motion: const ScrollMotion(),
-                  //dismissible: DismissiblePane(onDismissed: () {}),
-                  extentRatio: 1 / 4,
-                  children: [
-                    SlidableAction(
-                      onPressed: ((context) {
-                        widget.onDelete(widget.expense);
-                        isDismissed = true;
-                        setState(() {});
-                      }),
-                      borderRadius: BorderRadius.circular(5),
-                      backgroundColor: red,
-                      foregroundColor: white1,
-                      icon: Icons.delete,
-                      label: 'delete',
-                    ),
-                  ],
-                ),
-                child: widget.childWidget,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      child: Material(
+        color: white1,
+        borderRadius: BorderRadius.circular(5),
+        clipBehavior: Clip.antiAlias,
+        child: Slidable(
+          key: ValueKey(expense.tid),
+          startActionPane: ActionPane(
+            motion: const ScrollMotion(),
+            extentRatio: 1 / 4,
+            children: [
+              SlidableAction(
+                onPressed: (context) {
+                  onDelete(expense);
+                },
+                borderRadius: BorderRadius.circular(5),
+                backgroundColor: red,
+                foregroundColor: white1,
+                icon: Icons.delete,
+                label: 'delete',
               ),
-            ),
-          );
+            ],
+          ),
+          endActionPane: ActionPane(
+            motion: const ScrollMotion(),
+            extentRatio: 1 / 4,
+            children: [
+              SlidableAction(
+                onPressed: (context) {
+                  onDelete(expense);
+                },
+                borderRadius: BorderRadius.circular(5),
+                backgroundColor: red,
+                foregroundColor: white1,
+                icon: Icons.delete,
+                label: 'delete',
+              ),
+            ],
+          ),
+          child: childWidget,
+        ),
+      ),
+    );
   }
 }
 

@@ -24,7 +24,7 @@ class _SettingsPageState extends State<SettingsPage> {
   int timeFormat = 1;
   bool use24Format = false;
   bool enableBiometrics = false;
-  String username = "Aleena M.A";
+  String username = "";
   String? _backupFilePath;
 
   // Function to open the file picker dialog
@@ -69,7 +69,6 @@ class _SettingsPageState extends State<SettingsPage> {
     //await Auth().signOut();
     await DatabaseHelper.clearData();
     setUserName("User");
-    set24Format(false);
     setEnableBiometrics(false);
     setIsLoggedIn(false);
     Navigator.pop(context);
@@ -78,10 +77,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void getSavedData() async {
     username = await getUserName();
-    use24Format = await get24FormatStatus();
     enableBiometrics = await getEnableBiometricsStatus();
     dateFormat = await getDateFormatIndex();
-    print("24 format $use24Format");
 
     setState(() {});
   }
@@ -290,8 +287,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                     });
                                   },
                                   trailing: CupertinoSwitch(
-                                    activeColor: dark4,
-                                    trackColor: white3,
+                                    activeTrackColor: dark4,
+                                    inactiveTrackColor: white3,
                                     thumbColor: white1,
                                     value: enableBiometrics,
                                     onChanged: (value) {

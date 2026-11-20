@@ -337,15 +337,15 @@ class SettlementPdfApi {
                     participant.moneyOwedByOthers;
                 final net = balance * -1;
                 final netStr = net > 0
-                    ? "+ Rs. ${net.toStringAsFixed(net.truncateToDouble() == net ? 0 : 2)}"
+                    ? "+ ${net.toStringAsFixed(net.truncateToDouble() == net ? 0 : 2)}"
                     : net < 0
-                        ? "- Rs. ${(-net).toStringAsFixed((-net).truncateToDouble() == -net ? 0 : 2)}"
-                        : "Rs. 0";
+                        ? "- ${(-net).toStringAsFixed((-net).truncateToDouble() == -net ? 0 : 2)}"
+                        : "0";
 
                 return <String>[
                   participant.participantName,
-                  "Rs. ${participant.moneyPaid.toStringAsFixed(participant.moneyPaid.truncateToDouble() == participant.moneyPaid ? 0 : 2)}",
-                  "Rs. ${participant.moneyNeededToPay.toStringAsFixed(participant.moneyNeededToPay.truncateToDouble() == participant.moneyNeededToPay ? 0 : 2)}",
+                  participant.moneyPaid.toStringAsFixed(participant.moneyPaid.truncateToDouble() == participant.moneyPaid ? 0 : 2),
+                  participant.moneyNeededToPay.toStringAsFixed(participant.moneyNeededToPay.truncateToDouble() == participant.moneyNeededToPay ? 0 : 2),
                   netStr,
                 ];
               }),
@@ -417,7 +417,7 @@ class SettlementPdfApi {
                   return <String>[
                     transaction['payer'] ?? '',
                     transaction['borrower'] ?? '',
-                    "Rs. $amtStr",
+                    amtStr,
                   ];
                 }),
               ],
@@ -506,7 +506,7 @@ class SettlementPdfApi {
                     DateFormat('dd MMM yyyy').format(exp.date),
                     exp.tname,
                     exp.payername,
-                    "Rs. ${exp.amount}",
+                    "${exp.amount}",
                     splitText,
                   ];
                 }),
@@ -514,7 +514,7 @@ class SettlementPdfApi {
                   'Total Spending',
                   '',
                   '',
-                  "Rs. ${totalGroupExpenseAmount.truncateToDouble() == totalGroupExpenseAmount ? totalGroupExpenseAmount.toInt() : totalGroupExpenseAmount.toStringAsFixed(2)}",
+                  "${totalGroupExpenseAmount.truncateToDouble() == totalGroupExpenseAmount ? totalGroupExpenseAmount.toInt() : totalGroupExpenseAmount.toStringAsFixed(2)}",
                   '',
                 ],
               ],
@@ -581,22 +581,22 @@ class SettlementPdfApi {
           participantRows.add([
             DateFormat('dd MMM yyyy').format(exp.date),
             exp.tname,
-            "Rs. ${exp.amount}",
+            "${exp.amount}",
             exp.payername,
             charged > 0
-                ? "Rs. ${charged.truncateToDouble() == charged ? charged.toInt() : charged.toStringAsFixed(2)}"
+                ? "${charged.truncateToDouble() == charged ? charged.toInt() : charged.toStringAsFixed(2)}"
                 : "-",
-            isPayer ? "Rs. ${exp.amount}" : "-",
+            isPayer ? "${exp.amount}" : "-",
           ]);
         }
       }
 
       final double netBalance = totalPaid - totalCharged;
       final String netText = netBalance > 0
-          ? "Gets Back: Rs. ${netBalance.truncateToDouble() == netBalance ? netBalance.toInt() : netBalance.toStringAsFixed(2)}"
+          ? "Gets Back: ${netBalance.truncateToDouble() == netBalance ? netBalance.toInt() : netBalance.toStringAsFixed(2)}"
           : netBalance < 0
-              ? "Owes: Rs. ${(-netBalance).truncateToDouble() == -netBalance ? (-netBalance).toInt() : (-netBalance).toStringAsFixed(2)}"
-              : "Settled (Rs. 0)";
+              ? "Owes: ${(-netBalance).truncateToDouble() == -netBalance ? (-netBalance).toInt() : (-netBalance).toStringAsFixed(2)}"
+              : "Settled (0)";
 
       participantDetailWidgets.add(
         pw.Container(
@@ -694,8 +694,8 @@ class SettlementPdfApi {
                       '',
                       '',
                       '',
-                      "Rs. ${totalCharged.truncateToDouble() == totalCharged ? totalCharged.toInt() : totalCharged.toStringAsFixed(2)}",
-                      "Rs. ${totalPaid.truncateToDouble() == totalPaid ? totalPaid.toInt() : totalPaid.toStringAsFixed(2)}",
+                      "${totalCharged.truncateToDouble() == totalCharged ? totalCharged.toInt() : totalCharged.toStringAsFixed(2)}",
+                      "${totalPaid.truncateToDouble() == totalPaid ? totalPaid.toInt() : totalPaid.toStringAsFixed(2)}",
                     ],
                   ],
                 ),

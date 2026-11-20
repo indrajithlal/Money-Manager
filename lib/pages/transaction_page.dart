@@ -17,18 +17,25 @@ class TransactionPage extends StatefulWidget {
 class _TransactionPageState extends State<TransactionPage> {
   List<TransactionModel> data = [];
   List<Widget> transactions = [];
+  Key headerKey = UniqueKey();
 
   void getRecentTransactions() async {
-    data = (await DatabaseHelper.getAllTransactions())!.reversed.toList();
+    final allTransactions = await DatabaseHelper.getAllTransactions();
+    data = (allTransactions ?? []).reversed.toList();
     if (data.isEmpty) {
+      if (mounted) {
+        setState(() {
+          transactions = [];
+        });
+      }
       return;
     }
 
     transactions = List.generate(
       data.length < 5 ? data.length : 5,
       (index) => ListTile(
-        onTap: () {
-          nextScreen(
+        onTap: () async {
+          await nextScreen(
             context,
             AddExpensePage(
               whatData: data[index].name,
@@ -40,6 +47,12 @@ class _TransactionPageState extends State<TransactionPage> {
               isExpense: data[index].isExpense,
             ),
           );
+          getRecentTransactions();
+          if (mounted) {
+            setState(() {
+              headerKey = UniqueKey();
+            });
+          }
         },
         title: Text(
           data[index].name,
@@ -60,7 +73,9 @@ class _TransactionPageState extends State<TransactionPage> {
       ),
     );
 
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void testDatabase() async {
@@ -69,7 +84,9 @@ class _TransactionPageState extends State<TransactionPage> {
         .toList();
     data = temp;
     getRecentTransactions();
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -85,7 +102,7 @@ class _TransactionPageState extends State<TransactionPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 370, child: HeaderCard()),
+            SizedBox(height: 370, child: HeaderCard(key: headerKey)),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
               child: Row(
@@ -100,8 +117,14 @@ class _TransactionPageState extends State<TransactionPage> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () {
-                      nextScreen(context, AllTransactionsPage());
+                    onTap: () async {
+                      await nextScreen(context, const AllTransactionsPage());
+                      getRecentTransactions();
+                      if (mounted) {
+                        setState(() {
+                          headerKey = UniqueKey();
+                        });
+                      }
                     },
                     child: Text(
                       'See all',
@@ -140,8 +163,8 @@ class _TransactionPageState extends State<TransactionPage> {
         foregroundColor: white3,
         backgroundColor: dark2,
         child: const Icon(Icons.add),
-        onPressed: () {
-          nextScreen(
+        onPressed: () async {
+          await nextScreen(
             context,
             AddExpensePage(
               accountName: '',
@@ -153,6 +176,12 @@ class _TransactionPageState extends State<TransactionPage> {
               whatData: '',
             ),
           );
+          getRecentTransactions();
+          if (mounted) {
+            setState(() {
+              headerKey = UniqueKey();
+            });
+          }
         },
       ),
     );

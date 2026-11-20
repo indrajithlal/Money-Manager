@@ -74,7 +74,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
     setState(() {});
   }
 
-  void onSubmit() {
+  void onSubmit() async {
     if (descriptionController.text.isEmpty) {
       descriptionController.text = ' ';
     }
@@ -98,13 +98,12 @@ class _AddExpensePageState extends State<AddExpensePage> {
           description: widget.descriptionData,
           isExpense: widget.isExpense,
         );
-        DatabaseHelper.deleteTransaction(oldExpense);
-        //Navigator.pop(context);
+        await DatabaseHelper.deleteTransaction(oldExpense);
       }
-      DatabaseHelper.addTransaction(expense);
-      Navigator.pop(context);
-      Navigator.pop(context);
-      nextScreen(context, HomePage());
+      await DatabaseHelper.addTransaction(expense);
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
     }
   }
 

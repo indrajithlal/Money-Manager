@@ -1,4 +1,5 @@
 import 'package:money_manager/constants/theme_data.dart';
+import 'package:money_manager/functions/functions.dart';
 import 'package:money_manager/pages/split_expense/groupexpense_settings_page.dart';
 import 'package:money_manager/pages/split_expense/groupexpenses_display_page.dart';
 import 'package:money_manager/pages/split_expense/settlement_page.dart';
@@ -18,6 +19,23 @@ class SplitExpensePage extends StatefulWidget {
 }
 
 class _SplitExpensePageState extends State<SplitExpensePage> {
+  String currency = '₹';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrency();
+  }
+
+  void _loadCurrency() async {
+    final curr = await getCurrency();
+    if (mounted) {
+      setState(() {
+        currency = curr;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -48,10 +66,10 @@ class _SplitExpensePageState extends State<SplitExpensePage> {
             labelColor: dark_blue,
             unselectedLabelColor: dark1,
             indicatorColor: dark_blue,
-            tabs: const [
-              Tab(icon: Icon(Icons.currency_rupee)),
-              Tab(icon: Icon(Icons.balance_rounded)),
-              Tab(icon: Icon(Icons.settings)),
+            tabs: [
+              Tab(icon: getCurrencyIcon(currency)),
+              const Tab(icon: Icon(Icons.balance_rounded)),
+              const Tab(icon: Icon(Icons.settings)),
             ],
           ),
         ),
@@ -60,8 +78,12 @@ class _SplitExpensePageState extends State<SplitExpensePage> {
             SplitExpenseExpenses(
               id: widget.id,
               participants: widget.participants,
+              currency: currency,
             ),
-            SplitExpensePageSettlePage(gid: widget.id),
+            SplitExpensePageSettlePage(
+              gid: widget.id,
+              currency: currency,
+            ),
             SplitExpenseSettingsPage(id: widget.id),
           ],
         ),

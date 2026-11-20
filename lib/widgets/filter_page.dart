@@ -1,249 +1,283 @@
 import 'package:money_manager/constants/theme_data.dart';
+import 'package:money_manager/database/database_helper.dart';
+import 'package:money_manager/models/models.dart';
 import 'package:flutter/material.dart';
 
 class FilterPage extends StatefulWidget {
-  const FilterPage({super.key});
+  final Set<String> selectedCategories;
+  final List<TransactionModel>? availableExpenses;
+
+  const FilterPage({
+    super.key,
+    this.selectedCategories = const {},
+    this.availableExpenses,
+  });
 
   @override
   State<FilterPage> createState() => _FilterPageState();
 }
 
 class _FilterPageState extends State<FilterPage> {
-  List<bool> selectedMonths = [];
-  List<bool> selectedYears = [];
-  List<bool> selectedCategories = [];
-  int numYears = 7;
-  List<String> Months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  List<String> Categories = [
-    'Food',
-    'Travel',
-    'Friends',
-    'College',
-    'Study',
-    'Electronics',
-    'Entertainment',
-    'Fun',
-  ];
-  List<int> Years = [2017, 2018, 2019, 2020, 2021, 2022, 2023];
+  List<String> categories = [];
+  late Set<String> tempSelectedCategories;
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    for (int i = 0; i < 12; i++) {
-      selectedMonths.add(false);
+    tempSelectedCategories = Set.from(widget.selectedCategories);
+    loadCategories();
+  }
+
+  void loadCategories() async {
+    // Map of lowercase_key -> display_name for case-insensitive deduplication
+    Map<String, String> categoryMap = {};
+
+    // 1. Always guarantee "Income" category is present
+    categoryMap['income'] = 'Income';
+
+    // 2. Load from database CATEGORIES table
+    List<String>? dbCats = await DatabaseHelper.getCategories();
+    if (dbCats != null) {
+      for (var c in dbCats) {
+        final trimmed = c.trim();
+        if (trimmed.isNotEmpty) {
+          final lower = trimmed.toLowerCase();
+          // Normalize display name: capitalize first letter
+          final displayName = trimmed.length > 1
+              ? trimmed[0].toUpperCase() + trimmed.substring(1)
+              : trimmed.toUpperCase();
+          categoryMap.putIfAbsent(lower, () => displayName);
+        }
+      }
     }
-    for (int i = 0; i < Years.length; i++) {
-      selectedYears.add(false);
+
+    // 3. Load from actual transactions in DB (in case legacy categories exist)
+    if (widget.availableExpenses != null) {
+      for (var exp in widget.availableExpenses!) {
+        final trimmed = exp.category.trim();
+        if (trimmed.isNotEmpty) {
+          final lower = trimmed.toLowerCase();
+          final displayName = trimmed.length > 1
+              ? trimmed[0].toUpperCase() + trimmed.substring(1)
+              : trimmed.toUpperCase();
+          categoryMap.putIfAbsent(lower, () => displayName);
+        }
+        if (!exp.isExpense) {
+          categoryMap['income'] = 'Income';
+        }
+      }
     }
-    for (int i = 0; i < Categories.length; i++) {
-      selectedCategories.add(false);
+
+    final sortedList = categoryMap.values.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    if (mounted) {
+      setState(() {
+        categories = sortedList;
+        isLoading = false;
+      });
     }
+  }
+
+  bool isCategorySelected(String cat) {
+    return tempSelectedCategories.any(
+      (c) => c.trim().toLowerCase() == cat.trim().toLowerCase(),
+    );
+  }
+
+  void toggleCategory(String cat) {
+    setState(() {
+      final existing = tempSelectedCategories.firstWhere(
+        (c) => c.trim().toLowerCase() == cat.trim().toLowerCase(),
+        orElse: () => '',
+      );
+      if (existing.isNotEmpty) {
+        tempSelectedCategories.remove(existing);
+      } else {
+        tempSelectedCategories.add(cat);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 25),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Filters',
-                  style: TextStyle(
-                    color: dark4,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 25,
-                  ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: dark4, // Background color
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Apply',
-                    style: TextStyle(
-                      color: white1,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Filter by Category',
+                      style: TextStyle(
+                        color: dark4,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  if (tempSelectedCategories.isNotEmpty) ...[
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          tempSelectedCategories.clear();
+                        });
+                      },
+                      child: Text(
+                        'Clear',
+                        style: TextStyle(
+                          color: red,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: dark4,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context, tempSelectedCategories);
+                    },
+                    child: Text(
+                      'Apply',
+                      style: TextStyle(
+                        color: white1,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              //crossAxisAlignment: CrossAxisAlignment.start,
-              //mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Container(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Month',
-                          style: TextStyle(
-                            color: dark4,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 18,
-                          ),
-                        ),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              for (int i = 0; i < 12; i++)
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: FilterChip(
-                                    backgroundColor: white3,
-                                    selectedColor: dark3,
-                                    labelStyle: TextStyle(
-                                      color: selectedMonths[i] ? white3 : dark4,
-                                    ),
-                                    selected: selectedMonths[i],
-                                    label: Text(Months[i]),
-                                    checkmarkColor: selectedMonths[i]
-                                        ? white3
-                                        : dark4,
-                                    onSelected: (value) {
-                                      setState(() {
-                                        print(selectedMonths[i]);
-                                        selectedMonths[i] = !selectedMonths[i];
-                                        print(selectedMonths[i]);
-                                      });
-                                    },
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            const Divider(height: 1),
+            if (categories.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Container(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Year',
-                          style: TextStyle(
-                            color: dark4,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 18,
-                          ),
-                        ),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              for (int i = 0; i < numYears; i++)
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: FilterChip(
-                                    backgroundColor: white3,
-                                    selectedColor: dark3,
-                                    labelStyle: TextStyle(
-                                      color: selectedYears[i] ? white3 : dark4,
-                                    ),
-                                    selected: selectedYears[i],
-                                    label: Text('${Years[i]}'),
-                                    checkmarkColor: selectedYears[i]
-                                        ? white3
-                                        : dark4,
-                                    onSelected: (value) {
-                                      setState(() {
-                                        print(selectedYears[i]);
-                                        selectedYears[i] = !selectedYears[i];
-                                        print(selectedYears[i]);
-                                      });
-                                    },
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        tempSelectedCategories.isEmpty
+                            ? "Showing all categories"
+                            : "${tempSelectedCategories.length} of ${categories.length} selected",
+                        style: TextStyle(color: dark3, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Container(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Category',
-                          style: TextStyle(
-                            color: dark4,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 18,
-                          ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (tempSelectedCategories.length ==
+                              categories.length) {
+                            tempSelectedCategories.clear();
+                          } else {
+                            tempSelectedCategories.clear();
+                            tempSelectedCategories.addAll(categories);
+                          }
+                        });
+                      },
+                      child: Text(
+                        tempSelectedCategories.length == categories.length
+                            ? "Deselect all"
+                            : "Select all",
+                        style: TextStyle(
+                          color: dark_blue,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          child: Column(
-                            children: [
-                              for (int i = 0; i < Categories.length; i++)
-                                CheckboxListTile(
-                                  title: Text(
-                                    Categories[i],
-                                    style: TextStyle(
-                                      color: dark3,
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  value: selectedCategories[i],
-                                  //selectedTileColor: dark_color,
-                                  checkColor: white1,
-                                  selected: selectedCategories[i],
-                                  onChanged: (value) {
-                                    setState(() {
-                                      selectedCategories[i] =
-                                          !selectedCategories[i];
-                                    });
-                                  },
-                                  activeColor: dark3,
-                                  controlAffinity:
-                                      ListTileControlAffinity.leading,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
+            Flexible(
+              child: isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : categories.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Center(
+                            child: Text(
+                              "No categories found in database",
+                              style: TextStyle(
+                                color: dark3,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: categories.length,
+                          itemBuilder: (context, index) {
+                            final cat = categories[index];
+                            final isSelected = isCategorySelected(cat);
+                            return CheckboxListTile(
+                              dense: true,
+                              title: Text(
+                                cat,
+                                style: TextStyle(
+                                  color: dark4,
+                                  fontSize: 15,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                ),
+                              ),
+                              value: isSelected,
+                              checkColor: white1,
+                              activeColor: dark3,
+                              controlAffinity:
+                                  ListTileControlAffinity.leading,
+                              onChanged: (bool? value) {
+                                toggleCategory(cat);
+                              },
+                            );
+                          },
+                        ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

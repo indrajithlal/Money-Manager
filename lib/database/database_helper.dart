@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:money_manager/functions/functions.dart';
 import 'package:money_manager/models/models.dart';
+import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -75,6 +76,7 @@ class DatabaseHelper {
 
   static Future<int> deleteGroup(String id) async {
     final db = await _getDB();
+    await db.delete("EXPENSES", where: 'gid = ?', whereArgs: [id]);
     return await db.delete("GROUPS", where: 'id = ?', whereArgs: [id]);
   }
 
@@ -248,7 +250,8 @@ class DatabaseHelper {
     final db = await _getDB();
     return await db.delete(
       "TRANSACTIONS",
-      where: 'name = ? AND account = ? AND category = ? AND amount = ?',
+      where:
+          'name = ? AND account = ? AND LOWER(TRIM(category)) = LOWER(TRIM(?)) AND amount = ?',
       whereArgs: [
         transaction.name,
         transaction.account,
@@ -309,7 +312,6 @@ class DatabaseHelper {
     final List<Map<String, dynamic>> result = await db.rawQuery(
       "SELECT SUM(amount) as total FROM TRANSACTIONS WHERE isExpense='true' AND strftime('%Y-%m', date) = '$year-$formattedMonth'",
     );
-    await db.close();
 
     try {
       sum = result[0]['total'] ?? 0;
@@ -331,7 +333,6 @@ class DatabaseHelper {
     final List<Map<String, dynamic>> result = await db.rawQuery(
       "SELECT SUM(amount) as total FROM TRANSACTIONS WHERE isExpense='false' AND strftime('%Y-%m', date) = '$year-$formattedMonth'",
     );
-    await db.close();
 
     try {
       sum = result[0]['total'] ?? 0;
@@ -342,21 +343,130 @@ class DatabaseHelper {
     return sum;
   }
 
-  static Future<List<Map<String, dynamic>>> getStatistics(DateTime date) async {
+  static Future<Map<String, double>> getMonthlySummary(DateTime date) async {
     final db = await _getDB();
     String formattedMonth = date.month.toString().padLeft(2, '0');
     final List<Map<String, dynamic>> result = await db.rawQuery(
-      "SELECT category, SUM(amount) AS total_amount FROM TRANSACTIONS WHERE strftime('%Y-%m', date) = '${date.year}-$formattedMonth' AND isExpense = 'true' GROUP BY category",
+      "SELECT isExpense, SUM(amount) AS total FROM TRANSACTIONS WHERE strftime('%Y-%m', date) = '${date.year}-$formattedMonth' GROUP BY isExpense",
     );
-    print(result);
+    double income = 0.0;
+    double expense = 0.0;
+    for (var row in result) {
+      if (row['isExpense'] == 'false') {
+        income = (row['total'] as num?)?.toDouble() ?? 0.0;
+      } else if (row['isExpense'] == 'true') {
+        expense = (row['total'] as num?)?.toDouble() ?? 0.0;
+      }
+    }
+    double savings = income - expense;
+    double savingsRate = income > 0
+        ? ((savings / income) * 100).clamp(-100.0, 100.0)
+        : 0.0;
+    int daysInMonth = DateTime(date.year, date.month + 1, 0).day;
+    double avgDailySpend = daysInMonth > 0 ? (expense / daysInMonth) : 0.0;
+    return {
+      'income': income,
+      'expense': expense,
+      'savings': savings,
+      'savingsRate': savingsRate,
+      'avgDailySpend': avgDailySpend,
+    };
+  }
+
+  static Future<List<Map<String, dynamic>>> getStatistics(
+    DateTime date, {
+    bool isExpense = true,
+  }) async {
+    final db = await _getDB();
+    String formattedMonth = date.month.toString().padLeft(2, '0');
+    final isExpenseStr = isExpense ? 'true' : 'false';
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      "SELECT category, SUM(amount) AS total_amount FROM TRANSACTIONS WHERE strftime('%Y-%m', date) = '${date.year}-$formattedMonth' AND isExpense = '$isExpenseStr' GROUP BY category ORDER BY total_amount DESC",
+    );
     return result;
   }
 
-  static Future<List<TransactionModel>> getExpensesByMonth(DateTime date) async {
+  static Future<List<TransactionModel>> getExpensesByMonth(
+    DateTime date, {
+    bool isExpense = true,
+  }) async {
     final db = await _getDB();
     String formattedMonth = date.month.toString().padLeft(2, '0');
+    final isExpenseStr = isExpense ? 'true' : 'false';
     final List<Map<String, dynamic>> result = await db.rawQuery(
-      "SELECT * FROM TRANSACTIONS WHERE strftime('%Y-%m', date) = '${date.year}-$formattedMonth' AND isExpense = 'true' ORDER BY date DESC",
+      "SELECT * FROM TRANSACTIONS WHERE strftime('%Y-%m', date) = '${date.year}-$formattedMonth' AND isExpense = '$isExpenseStr' ORDER BY date DESC",
+    );
+    return result.map((item) => TransactionModel.fromJson(item)).toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> getAccountBreakdown(
+    DateTime date, {
+    bool isExpense = true,
+  }) async {
+    final db = await _getDB();
+    String formattedMonth = date.month.toString().padLeft(2, '0');
+    final isExpenseStr = isExpense ? 'true' : 'false';
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      "SELECT account, SUM(amount) AS total_amount FROM TRANSACTIONS WHERE strftime('%Y-%m', date) = '${date.year}-$formattedMonth' AND isExpense = '$isExpenseStr' GROUP BY account ORDER BY total_amount DESC",
+    );
+    return result;
+  }
+
+  static Future<List<Map<String, dynamic>>> getDailySpending(
+    DateTime date, {
+    bool isExpense = true,
+  }) async {
+    final db = await _getDB();
+    String formattedMonth = date.month.toString().padLeft(2, '0');
+    final isExpenseStr = isExpense ? 'true' : 'false';
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      "SELECT CAST(strftime('%d', date) AS INTEGER) AS day, SUM(amount) AS total_amount FROM TRANSACTIONS WHERE strftime('%Y-%m', date) = '${date.year}-$formattedMonth' AND isExpense = '$isExpenseStr' GROUP BY day ORDER BY day ASC",
+    );
+    return result;
+  }
+
+  static Future<List<Map<String, dynamic>>> getMonthlyTrend(
+    DateTime targetDate,
+  ) async {
+    final db = await _getDB();
+    List<Map<String, dynamic>> trendData = [];
+    for (int i = 5; i >= 0; i--) {
+      DateTime m = DateTime(targetDate.year, targetDate.month - i, 1);
+      String monthStr = "${m.year}-${m.month.toString().padLeft(2, '0')}";
+
+      final List<Map<String, dynamic>> res = await db.rawQuery(
+        "SELECT isExpense, SUM(amount) AS total FROM TRANSACTIONS WHERE strftime('%Y-%m', date) = '$monthStr' GROUP BY isExpense",
+      );
+      double income = 0.0;
+      double expense = 0.0;
+      for (var row in res) {
+        if (row['isExpense'] == 'false') {
+          income = (row['total'] as num?)?.toDouble() ?? 0.0;
+        } else if (row['isExpense'] == 'true') {
+          expense = (row['total'] as num?)?.toDouble() ?? 0.0;
+        }
+      }
+      trendData.add({
+        'month': m,
+        'label': DateFormat('MMM').format(m),
+        'year': m.year,
+        'income': income,
+        'expense': expense,
+      });
+    }
+    return trendData;
+  }
+
+  static Future<List<TransactionModel>> getTopTransactions(
+    DateTime date, {
+    bool isExpense = true,
+    int limit = 5,
+  }) async {
+    final db = await _getDB();
+    String formattedMonth = date.month.toString().padLeft(2, '0');
+    final isExpenseStr = isExpense ? 'true' : 'false';
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      "SELECT * FROM TRANSACTIONS WHERE strftime('%Y-%m', date) = '${date.year}-$formattedMonth' AND isExpense = '$isExpenseStr' ORDER BY amount DESC LIMIT $limit",
     );
     return result.map((item) => TransactionModel.fromJson(item)).toList();
   }

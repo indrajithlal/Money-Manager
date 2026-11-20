@@ -14,11 +14,14 @@ class HeaderCard extends StatefulWidget {
 }
 
 class _HeaderCardState extends State<HeaderCard> {
-  String username = 'Aleena m.a';
+  String username = '';
 
   void getUsername() async {
-    username = await getUserName();
-    setState(() {});
+    final name = await getUserName();
+    if (!mounted) return;
+    setState(() {
+      username = name;
+    });
   }
 
   @override
@@ -125,19 +128,19 @@ class _InfoCardState extends State<InfoCard> {
   List<String> accounts = [];
 
   void updateExpenseAmount() async {
-    totalExpenseAmount = await getFormatedAmount(
+    final exp = await getFormatedAmount(
       await DatabaseHelper.getTotalExpenseAmount(
         DateTime.now().year,
         DateTime.now().month + offset,
       ),
     );
-    totalIncomeAmount = await getFormatedAmount(
+    final inc = await getFormatedAmount(
       await DatabaseHelper.getTotalIncomeAmount(
         DateTime.now().year,
         DateTime.now().month + offset,
       ),
     );
-    totalBalanceAmount = await getFormatedAmount(
+    final bal = await getFormatedAmount(
       await DatabaseHelper.getTotalIncomeAmount(
             DateTime.now().year,
             DateTime.now().month + offset,
@@ -147,15 +150,17 @@ class _InfoCardState extends State<InfoCard> {
             DateTime.now().month + offset,
           ),
     );
-    print(totalExpenseAmount);
-    setState(() {});
+    if (!mounted) return;
+    setState(() {
+      totalExpenseAmount = exp;
+      totalIncomeAmount = inc;
+      totalBalanceAmount = bal;
+    });
   }
 
   void updateMonth() {
     int monthNum = DateTime.now().month + offset;
-    print(monthNum);
     thisMonth = DateFormat.MMMM().format(DateTime(0, monthNum));
-    print(thisMonth);
     if (thisMonth.length > 4) {
       thisMonth = thisMonth.substring(0, 3);
     }
@@ -165,7 +170,6 @@ class _InfoCardState extends State<InfoCard> {
   @override
   void initState() {
     super.initState();
-    updateExpenseAmount();
     updateMonth();
   }
 

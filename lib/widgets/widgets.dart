@@ -2,11 +2,14 @@ import 'package:money_manager/constants/theme_data.dart';
 import 'package:money_manager/pages/home_page.dart';
 import 'package:flutter/material.dart';
 
-void nextScreen(context, page) {
-  Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+Future<T?> nextScreen<T>(BuildContext context, Widget page) {
+  return Navigator.push<T>(
+    context,
+    MaterialPageRoute(builder: (context) => page),
+  );
 }
 
-void refreshHomePage(context) {
+void refreshHomePage(BuildContext context) {
   Navigator.pop(context);
   Navigator.pop(context);
   nextScreen(context, const HomePage());

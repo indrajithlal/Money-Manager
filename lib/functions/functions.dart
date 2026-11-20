@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:money_manager/database/database_helper.dart';
 import 'package:money_manager/models/models.dart';
 import 'package:intl/intl.dart';
@@ -23,24 +24,9 @@ void setUserName(String username) async {
   await prefs.setString('username', username);
 }
 
-void set24Format(bool value) async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('use24format', value);
-}
-
 void setEnableBiometrics(bool value) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setBool('enableBiometrics', value);
-}
-
-Future<bool> get24FormatStatus() async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool? value = prefs.getBool('use24format');
-  if (value == null) {
-    value = false;
-    await prefs.setBool('use24format', value);
-  }
-  return value;
 }
 
 Future<bool> getEnableBiometricsStatus() async {
@@ -90,6 +76,50 @@ Future<bool> getIsLoggedInStatus() async {
 void setCurrency(String value) async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   await prefs.setString('currency', value);
+}
+
+Future<String> getCurrency() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? currency = prefs.getString('currency');
+  if (currency == null || currency.trim().isEmpty) {
+    currency = "₹";
+    await prefs.setString('currency', currency);
+  }
+  return currency;
+}
+
+Widget getCurrencyIcon(String currency, {double size = 22, Color? color}) {
+  switch (currency) {
+    case '₹':
+      return Icon(Icons.currency_rupee, size: size, color: color);
+    case '\$':
+      return Icon(Icons.attach_money, size: size, color: color);
+    case '€':
+      return Icon(Icons.euro, size: size, color: color);
+    case '£':
+      return Icon(Icons.currency_pound, size: size, color: color);
+    case '¥':
+      return Icon(Icons.currency_yen, size: size, color: color);
+    case '₽':
+      return Icon(Icons.currency_ruble, size: size, color: color);
+    case '₺':
+      return Icon(Icons.currency_lira, size: size, color: color);
+    case '₿':
+      return Icon(Icons.currency_bitcoin, size: size, color: color);
+    case 'CHF':
+      return Icon(Icons.currency_franc, size: size, color: color);
+    default:
+      return Center(
+        child: Text(
+          currency,
+          style: TextStyle(
+            fontSize: size * 0.85,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      );
+  }
 }
 
 Future<String> getFormatedAmount(int amount) async {

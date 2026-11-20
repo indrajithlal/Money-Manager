@@ -8,9 +8,11 @@ import 'package:flutter/material.dart';
 class SplitExpenseExpenses extends StatefulWidget {
   final String id;
   final String participants;
+  final String currency;
   const SplitExpenseExpenses({
     required this.id,
     required this.participants,
+    this.currency = '₹',
     super.key,
   });
 
@@ -27,9 +29,12 @@ class _SplitExpenseExpensesState extends State<SplitExpenseExpenses> {
     return expenses;
   }
 
-  void onDelete(Expense expense) {
+  void onDelete(Expense expense) async {
     print("delete from database");
-    DatabaseHelper.deleteExpense("${expense.tid}");
+    await DatabaseHelper.deleteExpense("${expense.tid}");
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -87,7 +92,7 @@ class _SplitExpenseExpensesState extends State<SplitExpenseExpenses> {
                       ),
                     ),
                     trailing: Text(
-                      '₹ ${data[index].amount}',
+                      '${widget.currency} ${data[index].amount}',
                       style: TextStyle(
                         color: red,
                         fontSize: 17,
